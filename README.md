@@ -6,67 +6,85 @@
 
 ## Introducción
 Este proyecto consiste en la simulación de una máquina de Galton, utilizando hilos productores y consumidores para obtener y procesar datos de un archivo CSV. Los resultados de la simulación se muestran en una interfaz gráfica en tiempo real, representando la distribución de los datos recolectados como si se tratara de una campana de Gauss.
+Tiene la misma funcionalidad que el proyecto del Parcial 1 con la diferencia de que se hace uso de técnicas de programación paralela y distribuida.
+
+### **ACLARACIÓN** No se ha hecho uso de RabbitMQ 
+-----
 
 ## Estructura del Proyecto
+# Arquitectura del programa: Simulación de una Máquina de Galton
 
-### 1. **Clase `GaltonController`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton`
-- **Descripción**: Es el controlador principal de la aplicación. Inicialmente gestionaba la interfaz web para iniciar los procesos de productores y consumidores, aunque con la transición a `Swing`, la función de iniciar los procesos se movió directamente a la clase `GaltonUI`.
-- **Métodos**:
-  - `iniciarProcesos`: Inicializaba los procesos de productor y consumidor recibiendo los parámetros como número de hilos. 
+Este programa simula el funcionamiento de una máquina de Galton, representando la distribución gaussiana mediante la caída de bolas que interactúan con obstáculos y se agrupan en columnas. Está compuesto por varias clases organizadas en paquetes según su funcionalidad:
 
-### 2. **Clase `GaltonService`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton`
-- **Descripción**: Servicio que coordina la lógica de inicio de los procesos de productor y consumidor, delegando la creación de hilos y distribución de tareas al `ThreadManager`.
+---
 
-### 3. **Clase `ThreadFactory`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton.abstract_factory`
-- **Descripción**: Fábrica de hilos que se encarga de crear hilos tanto para productores como para consumidores. Configura los nombres de los hilos dependiendo de su tipo (productor o consumidor).
+## 1. **Punto de entrada**
+### `FabricaGaltonApplication`
+- Clase principal que configura y ejecuta la aplicación Spring Boot.
+- Realiza las siguientes tareas:
+  - **Carga de datos:** Lee un archivo CSV y genera una lista de datos (`cargarDatosDesdeCSV`).
+  - **Gestión de hilos:** Utiliza `ThreadManager` para coordinar productores y consumidores.
+  - **Interfaz gráfica:** Inicializa `GaltonUI` para la representación visual de la simulación.
 
-### 4. **Clase `ThreadManager`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton.abstract_factory`
-- **Descripción**: Administra la creación y gestión de los hilos de productores y consumidores. Distribuye los datos de entrada (leídos del archivo CSV) a los hilos productores y asigna la tarea de consumo a los consumidores.
-- **Métodos**:
-  - `iniciar`: Inicializa las fábricas de hilos, distribuye los datos a los productores y arranca los consumidores.
-  
-### 5. **Clase `Productor`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton.abstract_factory`
-- **Descripción**: Hilo que simula un productor, tomando elementos de una lista de datos (extraídos del archivo `database.csv`) y colocándolos en el buffer compartido. También se encarga de actualizar la interfaz gráfica mediante el método `actualizarGrafica` de la clase `GaltonUI`.
-- **Atributos**:
-  - `buffer`: El buffer compartido donde se producen los ítems.
-  - `galtonUI`: Se encarga de actualizar la gráfica visualizando la distribución de los datos.
+## 2. **Gestión de hilos y concurrencia**
+### Paquete: `com.edupablo.parcial2.fabrica_galton.abstract_factory`
 
-### 6. **Clase `Consumidor`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton.abstract_factory`
-- **Descripción**: Hilo que simula un consumidor, extrayendo elementos del buffer compartido y procesándolos. Aunque el consumo se realiza en segundo plano, su interacción con la interfaz gráfica es mínima.
+#### **`ThreadManager`**
+- Gestiona la creación y ejecución de hilos productores y consumidores.
+- Divide la lista de datos entre los hilos productores y coordina la comunicación a través de una cola compartida (`BlockingQueue`).
 
-### 7. **Clase `BufferCompartido`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton.abstract_factory`
-- **Descripción**: Implementa un buffer compartido entre los hilos productores y consumidores. Usa una lista de tamaño limitado para coordinar el intercambio de datos entre los productores y consumidores de forma segura.
+#### **`Productor`**
+- Produce elementos desde una lista y los inserta en la cola compartida.
+- Actualiza la interfaz gráfica (`GaltonUI`) al generar un nuevo dato.
 
-### 8. **Clase `GaltonUI`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton.ui`
-- **Descripción**: Esta clase es la responsable de la interfaz gráfica que representa en tiempo real la distribución de los datos producidos, simulando el comportamiento de una máquina de Galton.
-- **Métodos**:
-  - `actualizarGrafica`: Se llama cada vez que un productor genera un nuevo dato. Este método actualiza las barras de la gráfica que representan los datos distribuidos.
-  - `simularCaida`: Simula la caída de una bola en la máquina de Galton, ajustando su posición a izquierda o derecha en base a una probabilidad aleatoria.
-  - `dibujarGrafica`: Dibuja la gráfica de barras, mostrando la distribución actual de los datos en pantalla.
-  - `dibujarCuadricula`: Agrega una cuadrícula de fondo para facilitar la interpretación de la gráfica.
+#### **`Consumidor`**
+- Extrae elementos de la cola compartida, simulando su "consumo".
+- Integra pausas configurables (`tiempoEspera`) para emular tiempos de procesamiento.
 
-### 9. **Clase `FabricagaltonApplication`**
-- **Ubicación**: `com.edupablo.parcial1.fabrica_galton`
-- **Descripción**: Contiene el método `main` que inicializa la interfaz gráfica (`GaltonUI`) y arranca los procesos de productor y consumidor de forma automática.
-- **Método**:
-  - `main`: Instancia `GaltonUI` y `ThreadManager`, e inicia los hilos de productor y consumidor para simular la caída de datos en la máquina de Galton.
+#### **`ThreadFactory`**
+- Implementa un patrón Factory para crear instancias de hilos (`Thread`).
+- Personaliza la configuración y el nombre de los hilos creados.
 
+## 3. **Controlador Web**
+### Paquete: `com.edupablo.parcial2.fabrica_galton.controller`
+
+#### **`WebFluxController`**
+- Proporciona un endpoint REST para acceder a los datos generados.
+- Utiliza programación reactiva con `Flux` para emitir datos de forma continua.
+
+## 4. **Interfaz gráfica**
+### Paquete: `com.edupablo.parcial2.fabrica_galton.ui`
+
+#### **`GaltonUI`**
+- Representa la interfaz gráfica principal.
+- Utiliza un panel (`JPanel`) personalizado para dibujar bolas y columnas.
+- Administra la animación de bolas que caen y se apilan en columnas, simulando la distribución gaussiana.
+
+#### **`Bola`**
+- Representa las bolas que caen en la máquina.
+- Calcula su posición y simula un movimiento aleatorio hacia la izquierda o derecha.
+
+#### **`Columna`**
+- Representa las columnas donde las bolas se agrupan tras caer.
+- Permite apilar y dibujar bolas para visualizar la simulación.
+
+## 5. **Resumen del flujo de trabajo**
+1. **Inicialización:** La clase principal carga los datos del archivo CSV y configura los componentes necesarios.
+2. **Producción y consumo:** Los hilos productores generan elementos y los colocan en la cola, mientras que los consumidores los procesan.
+3. **Interacción gráfica:** Los datos generados por los productores actualizan la representación visual en `GaltonUI`.
+4. **Distribución visual:** Las bolas caen aleatoriamente, simulan interacciones con obstáculos, y se agrupan en columnas para formar una curva de distribución gaussiana.
+
+## 6. **Tecnologías utilizadas**
+- **Spring Boot:** Para la gestión del ciclo de vida de la aplicación y la exposición de endpoints REST.
+- **Java Swing:** Para la representación gráfica interactiva.
+- **Concurrencia en Java:** Uso de `BlockingQueue`, `Thread`, y patrones de fábrica para la gestión de hilos.
+- **WebFlux:** Para ofrecer capacidades reactivas en el controlador REST.
+---
 ## Aclaraciones
 
-### 1. **Firebase**
-Se intentó implementar una base de datos en **Firebase** para almacenar y gestionar los datos producidos por los hilos, lo que habría permitido mantener un registro persistente de los datos generados. Para ello, se añadieron las dependencias necesarias de Firebase al proyecto, pero debido a múltiples errores y problemas de compatibilidad, no se pudo completar su implementación.
+### 1. **No se ha hecho uso de RabbitMQ**
+Debido a una serie de problemas a nivel de compilación al intentar conectar con el localhost (sospecho que ha sido problema de mi ordenador pero como no lo puedo confirmar y no he conseguido ver el modo de implementar Rabbit sin que me de errores, he optado por hacer un programa funcional aunque prescindiendo de este recurso). 
+He añadido una una carpeta llamada errores donde he subido capturas del problema que tenía. 
 
-### 2. **Interfaz Gráfica con D3.js**
-Inicialmente, se consideró el uso de **D3.js** para la representación gráfica de los datos. D3.js es una biblioteca de JavaScript muy poderosa para visualizaciones interactivas y dinámicas en el navegador. Sin embargo, debido a la complejidad de integrar JavaScript con el resto del backend y los errores generados al intentar coordinar los hilos de Java con la interfaz web, se decidió finalmente optar por la implementación de la interfaz gráfica en **Swing**. Esta decisión simplificó el desarrollo y mejoró la visualización en tiempo real sin depender de un entorno web.
-
-## Conclusión
-
-Este proyecto simula la distribución de datos mediante una máquina de Galton, mostrando en tiempo real la distribución de los datos extraídos de un archivo CSV. Aunque no se logró implementar Firebase ni D3.js, la solución final con **Swing** proporciona una visualización funcional y sencilla del comportamiento gaussiano de los datos.
+### 2. **Interfaz Gráfica con javax swing**
+Al igual que en el Parcial 1 se ha optado por utilizar las librerías de UI en lugar de html por temas de simplicidad y problemas con el docker. La diferencia es que en esta ocasión si se han creado bolas que se van añadiendo al gráfico para la visualización de la distribución normal en lugar de un historigrama
